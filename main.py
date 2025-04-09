@@ -2,18 +2,18 @@ from flask import Flask, request, abort
 from bs4 import BeautifulSoup
 import requests, random, os
 from linebot import LineBotApi, WebhookHandler
-from linebot.models import MessageEvent, TextMessage, ImageSendMessage
+from linebot.models import MessageEvent, TextMessage, ImageSendMessage, TextSendMessage
 
-app = Flask(__name__)
+main = Flask(__name__)
 
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-@app.route("/")
+@main.route("/")
 def home():
     return "Line Bot Running"
 
-@app.route("/callback", methods=["POST"])
+@main.route("/callback", methods=["POST"])
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
@@ -33,6 +33,8 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, msg)
         else:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="目前沒抓到圖片，再試一次！"))
+    else:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="你說了：" + event.message.text))
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
