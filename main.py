@@ -26,10 +26,13 @@ def callback():
     return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
+@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    if event.message.text.strip() == "抽圖":
+    user_message = event.message.text.strip()
+
+    if "抽" in user_message:  # ✅ 判斷只要包含「抽」
         image_url = get_random_beauty_image()
-        print("抓到的圖片網址：", image_url)  # debug log
+        print("抓到的圖片網址：", image_url)
         if image_url:
             msg = ImageSendMessage(
                 original_content_url=image_url,
@@ -39,35 +42,53 @@ def handle_message(event):
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="沒抓到圖片，稍後再試～")
+                TextSendMessage(text="目前沒抓到圖片，再試一次！")
             )
     else:
+        # 非抽圖文字的回應
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="你說了：" + event.message.text)
+            TextSendMessage(text="你說了：" + user_message)
         )
+
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
-    index_url = base_url + "/bbs/Beauty/index.html"
-    rs = requests.get(index_url, headers={"cookie": "over18=1"})
-    soup = BeautifulSoup(rs.text, "html.parser")
+    index_urls = [
+        base_url + "/bbs/Beauty/index.html",
+        base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)
+    ]
+    
+    article_links = []
 
-    links = [base_url + a["href"] for a in soup.select(".r-ent a") if a]
-    random.shuffle(links)
+    # 抓取多頁文章連結
+    for url in index_urls:
+        rs = requests.get(url, headers={"cookie": "over18=1"})
+        soup = BeautifulSoup(rs.text, "html.parser")
+        links = [base_url + a["href"] for a in soup.select(".r-ent a") if a]
+        article_links.extend(links)
 
-    for link in links:
-        res = requests.get(link, headers={"cookie": "over18=1"})
-        s = BeautifulSoup(res.text, "html.parser")
-        imgs = []
-        for a in s.select("a"):
-            href = a.get("href", "")
-            if "imgur.com" in href:
-                if href.startswith("https://imgur.com"):
-                    href = href.replace("https://imgur.com", "https://i.imgur.com") + ".jpg"
-                if href.startswith("http"):
-                    imgs.append(href)
-        if imgs:
-            return random.choice(imgs)
+    random.shuffle(article_links)
+
+    for link in article_links:
+        try:
+            res = requests.get(link, headers={"cookie": "over18=1"})
+            s = BeautifulSoup(res.text, "html.parser")
+            imgs = []
+            for a in s.select("a"):
+                href = a.get("href", "")
+                if "imgur.com" in href:
+                    if href.startswith("https://imgur.com"):
+                        href = href.replace("https://imgur.com", "https://i.imgur.com") + ".jpg"
+                    if href.startswith("http"):
+                        imgs.append(href)
+            print("👉 正在檢查文章：", link)
+            print("🎯 圖片列表：", imgs)
+            if imgs:
+                return random.choice(imgs)
+        except Exception as e:
+            print("❗ 抓取文章錯誤：", link, e)
+            continue
 
     return None
+
