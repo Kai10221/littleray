@@ -4,16 +4,16 @@ import requests, random, os
 from linebot import LineBotApi, WebhookHandler
 from linebot.models import MessageEvent, TextMessage, ImageSendMessage, TextSendMessage
 
-main = Flask(__name__)
+main = Flask(__name__)  # <-- 注意這裡
 
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-@main.route("/")
+@main.route("/")  # <-- 注意這裡
 def home():
     return "Line Bot Running"
 
-@main.route("/callback", methods=["POST"])
+@main.route("/callback", methods=["POST"])  # <-- 注意這裡
 def callback():
     signature = request.headers["X-Line-Signature"]
     body = request.get_data(as_text=True)
