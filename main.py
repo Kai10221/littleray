@@ -2,12 +2,13 @@ from flask import Flask, request, abort
 from bs4 import BeautifulSoup
 import requests, random, os
 from linebot import LineBotApi, WebhookHandler
-from linebot.models import MessageEvent, TextMessage, ImageSendMessage
+from linebot.models import MessageEvent, TextMessage, ImageSendMessage, TextSendMessage
 
 app = Flask(__name__)
 
-line_bot_api = LineBotApi(os.getenv("ouqCgkXOXiP5+pPOFoJPQqUXBB0j6aVUtCOl6RQRt/LW6qIjbrSSOwHL3qMx0jfuYux0vfpmo/EE1KDtXE+8uqfIJV4fDCJyc9/MLCdl4OqyBJnTweG6xWvn7om2+8MVJKHBFVvM2bQBzQG67PAhuwdB04t89/1O/w1cDnyilFU="))
-handler = WebhookHandler(os.getenv("ca60feb7c097c5295d0f2d4b2791a05a"))
+# 使用環境變數（安全做法）
+line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
+handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
 @app.route("/")
 def home():
@@ -33,6 +34,9 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, msg)
         else:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text="目前沒抓到圖片，再試一次！"))
+    else:
+        # 加入測試文字確認 webhook 正常
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="你說了：" + event.message.text))
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
