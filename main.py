@@ -51,8 +51,4 @@ def handle_message(event):
 
     # 其他訊息回覆
     else:
-        from linebot.models import TextMessage
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextMessage()
-        )
+       pass
