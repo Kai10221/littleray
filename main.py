@@ -54,5 +54,5 @@ def handle_message(event):
         from linebot.models import TextMessage
         line_bot_api.reply_message(
             event.reply_token,
-            TextMessage(text="你說了：" + text)
+            TextMessage()
         )
