@@ -7,6 +7,7 @@ import os
 # 匯入各功能模組
 from pttbeauty import handle_beauty
 from ptt_hot import get_hot_articles, make_flex_carousel
+from weather import handle_weather
 
 app = Flask(__name__)
 
@@ -31,9 +32,9 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    text = event.message.text
+    text = event.message.text.strip()
 
-    # 功能 1：抽圖（轉交給 pttbeauty 模組處理）
+    # 功能 1：抽圖（交由 pttbeauty 模組處理）
     if "抽" in text:
         handle_beauty(event, line_bot_api)
 
@@ -43,10 +44,15 @@ def handle_message(event):
         flex_msg = make_flex_carousel(articles)
         line_bot_api.reply_message(event.reply_token, flex_msg)
 
+    # 功能 3：天氣查詢（輸入例如「台北天氣」）
+    elif text.endswith("天氣"):
+        from weather import handle_weather  # 請先在 weather.py 中定義 handle_weather
+        handle_weather(event, line_bot_api)
+
     # 其他訊息回覆
     else:
+        from linebot.models import TextMessage
         line_bot_api.reply_message(
             event.reply_token,
             TextMessage(text="你說了：" + text)
         )
-
