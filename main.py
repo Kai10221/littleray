@@ -21,18 +21,16 @@ def callback():
     try:
         handler.handle(body, signature)
     except Exception as e:
-        print("Webhook 處理錯誤：", e)
+        print("Webhook 處理錯誤:", e)
         abort(400)
     return "OK"
 
 @handler.add(MessageEvent, message=TextMessage)
-@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    user_message = event.message.text.strip()
-
-    if "抽" in user_message:  # ✅ 判斷只要包含「抽」
+    # 假設如果收到的訊息中包含「抽」這個字，就回傳圖片
+    if "抽" in event.message.text:
         image_url = get_random_beauty_image()
-        print("抓到的圖片網址：", image_url)
+        print("抓到的圖片網址：", image_url)  # Debug 使用
         if image_url:
             msg = ImageSendMessage(
                 original_content_url=image_url,
@@ -42,25 +40,21 @@ def handle_message(event):
         else:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="目前沒抓到圖片，再試一次！")
+                TextSendMessage(text="沒抓到圖片，稍後再試～")
             )
     else:
-        # 非抽圖文字的回應
+        # 其他訊息回覆測試用途
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="你說了：" + user_message)
+            TextSendMessage(text="你說了：" + event.message.text)
         )
-
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
-    index_urls = [
-        base_url + "/bbs/Beauty/index.html",
-        base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)
-    ]
+    # 方法1：合併兩個 list
+    index_urls = [base_url + "/bbs/Beauty/index.html"] + [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)]
     
     article_links = []
-
     # 抓取多頁文章連結
     for url in index_urls:
         rs = requests.get(url, headers={"cookie": "over18=1"})
@@ -91,4 +85,3 @@ def get_random_beauty_image():
             continue
 
     return None
-
