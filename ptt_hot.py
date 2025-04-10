@@ -1,46 +1,27 @@
-import requests
-import random
-from bs4 import BeautifulSoup
 from linebot.models import FlexSendMessage, TextSendMessage
-
-def get_hot_articles():
-    """
-    從 disp.cc 熱門文章列表取得資料，並隨機抽取 5 篇文章。
-    每篇文章資料格式：
-        {"title": <文章標題>, "link": <文章連結>}
-    """
-    url = "https://disp.cc/b/"
-    try:
-        response = requests.get(url, timeout=5)
-        soup = BeautifulSoup(response.text, "html.parser")
-        articles = []
-        # 根據 disp.cc 的頁面結構，篩選出以 https://disp.cc/b/ 開頭的連結，且文字不為空
-        for a in soup.find_all("a"):
-            href = a.get("href", "")
-            text = a.get_text(strip=True)
-            if href.startswith("https://disp.cc/b/") and text:
-                articles.append({"title": text, "link": href})
-        if len(articles) >= 5:
-            return random.sample(articles, 5)
-        else:
-            return articles
-    except Exception as e:
-        return []
 
 def make_flex_carousel(articles):
     """
-    將取得的文章資料轉換成 LINE Flex Message 的 Carousel 格式，
-    每個 Bubble 顯示文章標題與一個按鈕，點擊後可直接開啟原文連結。
-    
-    若文章資料為空，則回傳一個簡單的文字訊息。
+    美化版：使用 Hero + Body + Footer + styles 來做更好看的 Carousel。
+    如果沒有文章，回傳文字訊息。
     """
     if not articles:
         return TextSendMessage(text="目前沒有熱門文章")
     
+    # 可以自訂一張預設 Hero 圖
+    placeholder_image = "https://i.imgur.com/H2fNoTr.jpg"
+
     bubbles = []
     for article in articles:
         bubble = {
             "type": "bubble",
+            "hero": {
+                "type": "image",
+                "url": placeholder_image,
+                "size": "full",
+                "aspectRatio": "20:13",
+                "aspectMode": "cover"
+            },
             "body": {
                 "type": "box",
                 "layout": "vertical",
@@ -49,17 +30,31 @@ def make_flex_carousel(articles):
                         "type": "text",
                         "text": article["title"],
                         "weight": "bold",
-                        "size": "xl",
+                        "size": "md",
                         "wrap": True
+                    },
+                    {
+                        "type": "separator",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "文章來源：disp.cc",
+                        "size": "sm",
+                        "color": "#666666",
+                        "wrap": True,
+                        "margin": "md"
                     }
                 ]
             },
             "footer": {
                 "type": "box",
-                "layout": "vertical",
+                "layout": "horizontal",
                 "contents": [
                     {
                         "type": "button",
+                        "style": "primary",
+                        "color": "#00BB00",
                         "action": {
                             "type": "uri",
                             "label": "看文章",
@@ -67,6 +62,17 @@ def make_flex_carousel(articles):
                         }
                     }
                 ]
+            },
+            "styles": {
+                "hero": {
+                    "backgroundColor": "#DDDDDD"
+                },
+                "body": {
+                    "backgroundColor": "#FFFFFF"
+                },
+                "footer": {
+                    "backgroundColor": "#F2F2F2"
+                }
             }
         }
         bubbles.append(bubble)
