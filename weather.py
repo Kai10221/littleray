@@ -3,7 +3,7 @@ import requests
 import urllib.parse
 from linebot.models import FlexSendMessage, TextSendMessage
 
-# 台灣主要城市中英對照（可根據需要擴充）
+# 台灣主要城市對照字典
 CITY_MAPPING = {
     "台北": "Taipei",
     "新北": "New Taipei",
@@ -28,65 +28,44 @@ CITY_MAPPING = {
 }
 
 def get_current_weather(city):
-    """
-    呼叫 OpenWeatherMap API 取得目前天氣資料，回傳字典格式：
-      {
-         "city": 城市名稱,
-         "temp": 溫度 (°C),
-         "condition": 天氣描述,
-         "icon": 天氣圖示 URL,
-         "humidity": 濕度,
-         "wind_speed": 風速 (m/s),
-         "city_id": 城市代碼
-      }
-    """
-    # 如果使用者輸入的是中文城市名稱，嘗試轉換成英文
+    # 將中文城市名稱轉換成英文（若存在對照中）
     if city in CITY_MAPPING:
         city = CITY_MAPPING[city]
-    api_key = os.getenv("OPENWEATHERMAP_KEY")
+    api_key = os.getenv("WEATHERAPI_KEY")
     if not api_key:
         return None
-    base_url = "https://api.openweathermap.org/data/2.5/weather"
+    base_url = "https://api.weatherapi.com/v1/current.json"
     params = {
+        "key": api_key,
         "q": city,
-        "appid": api_key,
-        "units": "metric",   # 使用攝氏
-        "lang": "zh_tw"      # 回傳中文描述
+        "lang": "zh"
     }
     try:
         response = requests.get(base_url, params=params, timeout=5)
         data = response.json()
-        if data.get("cod") != 200:
+        if "error" in data:
             return None
-        # 取得圖示代碼，OpenWeatherMap 提供的天氣圖示 URL 格式：
-        # https://openweathermap.org/img/wn/{icon}@2x.png
-        icon_code = data["weather"][0]["icon"]
-        icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+        icon_url = data["current"]["condition"]["icon"]
+        if icon_url.startswith("//"):
+            icon_url = "https:" + icon_url
+        
         return {
-            "city": data["name"],
-            "temp": data["main"]["temp"],
-            "condition": data["weather"][0]["description"],
+            "city": data["location"]["name"],
+            "temp": data["current"]["temp_c"],
+            "condition": data["current"]["condition"]["text"],
             "icon": icon_url,
-            "humidity": data["main"]["humidity"],
-            "wind_speed": data["wind"]["speed"],
-            "city_id": str(data.get("id", ""))
+            "humidity": data["current"]["humidity"],
+            "wind_speed": data["current"]["wind_kph"],
+            "city_id": data["location"].get("id", "")
         }
     except Exception:
         return None
 
 def make_weather_carousel(weather):
-    """
-    根據天氣資訊組成 Flex Message 的 Carousel 格式，
-    產生兩個 Bubble：
-      - 第一則顯示「今天 {城市} 天氣」詳細資訊
-      - 第二則顯示「一週 {城市} 天氣」及查詢按鈕（連結以 Google 搜尋結果為例）
-    若無資料則回傳文字訊息。
-    """
     if not weather:
         return TextSendMessage(text="無法取得天氣資料")
     
     icon_url = weather["icon"]
-    
     if weather["city_id"]:
         detailed_uri = f"https://openweathermap.org/city/{weather['city_id']}"
     else:
@@ -134,7 +113,7 @@ def make_weather_carousel(weather):
                 },
                 {
                     "type": "text",
-                    "text": f"風速：{weather['wind_speed']} m/s",
+                    "text": f"風速：{weather['wind_speed']} km/h",
                     "size": "sm",
                     "wrap": True
                 }
@@ -210,10 +189,6 @@ def make_weather_carousel(weather):
     return FlexSendMessage(alt_text=f"{weather['city']} 天氣資訊", contents=carousel)
 
 def handle_weather(event, line_bot_api):
-    """
-    根據使用者訊息（例如「台北天氣」）取得城市名稱，
-    查詢天氣後回覆一則 Flex Message 卡片。
-    """
     text = event.message.text.strip()
     if text.endswith("天氣"):
         city = text[:-2]
