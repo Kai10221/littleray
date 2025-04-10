@@ -15,9 +15,8 @@ def home():
 
 @main.route("/callback", methods=["POST"])
 def callback():
-    signature = request.headers["X-Line-Signature"]
+    signature = request.headers.get("X-Line-Signature", "")
     body = request.get_data(as_text=True)
-
     try:
         handler.handle(body, signature)
     except Exception as e:
@@ -27,10 +26,12 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    # 假設如果收到的訊息中包含「抽」這個字，就回傳圖片
+    # 記錄收到的訊息
+    print("收到訊息:", event.message.text)
+    # 只要訊息中有 "抽" 就觸發回傳圖片功能
     if "抽" in event.message.text:
         image_url = get_random_beauty_image()
-        print("抓到的圖片網址：", image_url)  # Debug 使用
+        print("抓到的圖片網址:", image_url)
         if image_url:
             msg = ImageSendMessage(
                 original_content_url=image_url,
@@ -43,7 +44,6 @@ def handle_message(event):
                 TextSendMessage(text="沒抓到圖片，稍後再試～")
             )
     else:
-        # 其他訊息回覆測試用途
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="你說了：" + event.message.text)
@@ -51,37 +51,35 @@ def handle_message(event):
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
-    # 方法1：合併兩個 list
+    # 合併固定首頁與其他頁面：用方法1
     index_urls = [base_url + "/bbs/Beauty/index.html"] + [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)]
-    
     article_links = []
-    # 抓取多頁文章連結
     for url in index_urls:
-        rs = requests.get(url, headers={"cookie": "over18=1"})
-        soup = BeautifulSoup(rs.text, "html.parser")
-        links = [base_url + a["href"] for a in soup.select(".r-ent a") if a]
-        article_links.extend(links)
-
+        try:
+            rs = requests.get(url, headers={"cookie": "over18=1"}, timeout=5)
+            soup = BeautifulSoup(rs.text, "html.parser")
+            links = [base_url + a["href"] for a in soup.select(".r-ent a") if a.get("href")]
+            article_links.extend(links)
+        except Exception as e:
+            print("取得文章連結失敗:", url, e)
     random.shuffle(article_links)
-
+    
     for link in article_links:
         try:
-            res = requests.get(link, headers={"cookie": "over18=1"})
-            s = BeautifulSoup(res.text, "html.parser")
+            res = requests.get(link, headers={"cookie": "over18=1"}, timeout=5)
+            soup = BeautifulSoup(res.text, "html.parser")
             imgs = []
-            for a in s.select("a"):
+            for a in soup.select("a"):
                 href = a.get("href", "")
                 if "imgur.com" in href:
                     if href.startswith("https://imgur.com"):
                         href = href.replace("https://imgur.com", "https://i.imgur.com") + ".jpg"
                     if href.startswith("http"):
                         imgs.append(href)
-            print("👉 正在檢查文章：", link)
-            print("🎯 圖片列表：", imgs)
+            print("檢查文章:", link, "圖列表:", imgs)
             if imgs:
                 return random.choice(imgs)
         except Exception as e:
-            print("❗ 抓取文章錯誤：", link, e)
+            print("抓取文章失敗:", link, e)
             continue
-
     return None
