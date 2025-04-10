@@ -3,7 +3,29 @@ import requests
 import urllib.parse
 from linebot.models import FlexSendMessage, TextSendMessage
 
+# 對照字典：將中文城市名稱轉換為 WeatherAPI.com 容易識別的英文名稱
+CITY_MAPPING = {
+    "台北": "Taipei",
+    "高雄": "Kaohsiung",
+    "洛杉磯": "Los Angeles"
+}
+
 def get_current_weather(city):
+    """
+    呼叫 WeatherAPI.com 的 Current Weather API 取得目前天氣資料，回傳一個字典，格式：
+      {
+         "city": 城市名稱,
+         "temp": 溫度 (°C),
+         "condition": 天氣描述,
+         "icon": 天氣圖示 URL,
+         "humidity": 濕度,
+         "wind_speed": 風速 (km/h),
+         "city_id": 城市代碼（可能為空）
+      }
+    """
+    # 若有 CITY_MAPPING，則嘗試轉換城市名稱
+    if city in CITY_MAPPING:
+        city = CITY_MAPPING[city]
     api_key = os.getenv("WEATHERAPI_KEY")
     if not api_key:
         return None
@@ -35,16 +57,22 @@ def get_current_weather(city):
         return None
 
 def make_weather_carousel(weather):
+    """
+    根據取得的天氣資訊，組成 Flex Message 的 Carousel 格式，
+    包含兩個 Bubble：
+      - Bubble 1：顯示「今天 {城市} 天氣」的詳細資訊
+      - Bubble 2：顯示「一週 {城市} 天氣」，按鈕導向 Google 搜尋該城市天氣
+    若無天氣資料，回傳 TextSendMessage。
+    """
     if not weather:
         return TextSendMessage(text="無法取得天氣資料")
     
     icon_url = weather["icon"]
-    
-    # 如果 city_id 為空，則用 Google 搜尋查詢
+
+    # 如果 city_id 為空，則用 Google 搜尋來補足詳細資訊連結
     if weather["city_id"]:
         detailed_uri = f"https://openweathermap.org/city/{weather['city_id']}"
     else:
-        # 將查詢的字串進行 URL encoding
         query = f"{weather['city']} 天氣"
         encoded_query = urllib.parse.quote(query)
         detailed_uri = f"https://www.google.com/search?q={encoded_query}"
@@ -165,6 +193,11 @@ def make_weather_carousel(weather):
     return FlexSendMessage(alt_text=f"{weather['city']} 天氣資訊", contents=carousel)
 
 def handle_weather(event, line_bot_api):
+    """
+    根據使用者輸入的訊息取得城市名稱 (例如「台北天氣」)，
+    呼叫 get_current_weather() 取得天氣資訊，
+    並使用 make_weather_carousel() 組成 Flex Message 回覆使用者。
+    """
     text = event.message.text.strip()
     if text.endswith("天氣"):
         city = text[:-2]
