@@ -207,4 +207,18 @@ def make_weather_carousel(weather):
         "contents": [bubble_today, bubble_week]
     }
     
-    return FlexSendMessage(alt_text=f"{weather['city']} 天_
+    return FlexSendMessage(alt_text=f"{weather['city']} 天氣資訊", contents=carousel)
+
+def handle_weather(event, line_bot_api):
+    """
+    根據使用者訊息（例如「台北天氣」）取得城市名稱，
+    查詢天氣後回覆一則 Flex Message 卡片。
+    """
+    text = event.message.text.strip()
+    if text.endswith("天氣"):
+        city = text[:-2]
+    else:
+        city = text
+    weather = get_current_weather(city)
+    msg = make_weather_carousel(weather)
+    line_bot_api.reply_message(event.reply_token, msg)
