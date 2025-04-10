@@ -20,7 +20,7 @@ def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
     # 抓取 Beauty 版文章，依序來自首頁與其他 2 頁
     index_urls = [base_url + "/bbs/Beauty/index.html"] + \
-                 [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)]
+                 [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 10)]
     article_links = []
     for url in index_urls:
         try:
