@@ -2,10 +2,17 @@ import os
 import requests
 from linebot.models import FlexSendMessage, TextSendMessage
 
+# 新增中文轉英文對照字典
+CITY_MAPPING = {
+    "台北": "Taipei",
+    "高雄": "Kaohsiung",
+    "洛杉磯": "Los Angeles"
+}
+
 def get_current_weather(city):
     """
     呼叫 WeatherAPI.com 的 Current Weather API 取得目前天氣資料。
-    回傳格式：
+    回傳字典格式如下：
       {
          "city": 城市名稱,
          "temp": 溫度 (°C),
@@ -16,6 +23,10 @@ def get_current_weather(city):
          "city_id": 城市代碼（如果有的話）
       }
     """
+    # 將中文城市名稱轉換成英文 (如果在對照表內)
+    if city in CITY_MAPPING:
+        city = CITY_MAPPING[city]
+
     api_key = os.getenv("WEATHERAPI_KEY")
     print("使用的 API 金鑰:", api_key)
     if not api_key:
@@ -25,7 +36,7 @@ def get_current_weather(city):
     params = {
         "key": api_key,
         "q": city,
-        "lang": "zh"
+        "lang": "zh"  # 使用中文
     }
     try:
         response = requests.get(base_url, params=params, timeout=5)
@@ -55,14 +66,15 @@ def get_current_weather(city):
 
 def make_weather_carousel(weather):
     """
-    根據天氣資料組成 Flex Message 的 Carousel 格式，
+    根據取得的天氣資訊，組成 Flex Message 的 Carousel 格式，
     包含兩個 Bubble：
-      - 今天的天氣詳情
-      - 一週天氣連結（按鈕導向 Google 搜尋）
+      - 第1則：顯示「今天 {城市} 天氣」詳細資訊
+      - 第2則：顯示「一週 {城市} 天氣」，並提供按鈕連結到 Google 搜尋查詢該城市天氣
+    若無天氣資料，回傳一則文字訊息。
     """
     if not weather:
         return TextSendMessage(text="無法取得天氣資料")
-
+    
     icon_url = weather["icon"]
 
     bubble_today = {
@@ -80,7 +92,7 @@ def make_weather_carousel(weather):
             "contents": [
                 {
                     "type": "text",
-                    "text": f"今天 {weather['city']} 天氣",
+                    "text": f"今天 {weather['city']} 的天氣",
                     "weight": "bold",
                     "size": "lg",
                     "wrap": True
@@ -121,13 +133,13 @@ def make_weather_carousel(weather):
                     "action": {
                         "type": "uri",
                         "label": "詳細資訊",
-                        "uri": f"https://openweathermap.org/city/{weather['city_id']}"  # 若無 city_id，可換成其他網址
+                        "uri": f"https://openweathermap.org/city/{weather['city_id']}"
                     }
                 }
             ]
         }
     }
-
+    
     bubble_week = {
         "type": "bubble",
         "hero": {
@@ -172,17 +184,19 @@ def make_weather_carousel(weather):
             ]
         }
     }
-
+    
     carousel = {
         "type": "carousel",
         "contents": [bubble_today, bubble_week]
     }
+    
     return FlexSendMessage(alt_text=f"{weather['city']} 天氣資訊", contents=carousel)
 
 def handle_weather(event, line_bot_api):
     """
-    取得使用者輸入的城市名稱，查詢天氣後回覆 Flex Message 卡片。
-    假設使用者訊息格式為「城市名稱天氣」，例如「台北天氣」。
+    根據使用者輸入的訊息取得城市名稱 (例如「台北天氣」)，
+    呼叫 get_current_weather() 取得天氣資訊，
+    並使用 make_weather_carousel() 組成 Flex Message 回覆使用者。
     """
     text = event.message.text.strip()
     if text.endswith("天氣"):
