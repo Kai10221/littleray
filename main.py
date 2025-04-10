@@ -41,9 +41,7 @@ def handle_message(event):
 
 def get_random_beauty_image():
     base_url = "https://www.ptt.cc"
-    # 合併首頁與其他頁
-    index_urls = [base_url + "/bbs/Beauty/index.html"] + \
-                 [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)]
+    index_urls = [base_url + "/bbs/Beauty/index.html"] + [base_url + "/bbs/Beauty/index{}.html".format(i) for i in range(1, 3)]
     article_links = []
     for url in index_urls:
         try:
