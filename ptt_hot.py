@@ -53,7 +53,7 @@ def make_flex_carousel(articles):
     if not articles:
         return TextSendMessage(text="目前沒有熱門文章")
     
-    default_image = "https://imgur.com/gallery/power-sUnKVbJ#/t/wallpaper"  # 請根據需求替換預設圖片
+    default_image = "https://i.imgur.com/pCoR6S4.jpeg"  # 請根據需求替換預設圖片
     bubbles = []
     for article in articles:
         hero_image = article["image"] if article["image"] else default_image
